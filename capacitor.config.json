@@ -1,0 +1,16 @@
+{
+  "appId": "pt.familia.rolimpedro",
+  "appName": "Família Rolim Pedro",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1800,
+      "launchAutoHide": true,
+      "backgroundColor": "#050505",
+      "showSpinner": false
+    },
+    "StatusBar": { "style": "dark", "backgroundColor": "#050505" }
+  }
+}
