@@ -28,14 +28,20 @@ jobs:
         run: |
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
-          npm list vite
-          npx vite --version
 
       - name: Build web
         run: npm run build
 
       - name: Add Android
         run: npx cap add android || true
+
+      - name: Prepare app icon
+        run: |
+          mkdir -p assets
+          cp public/logo.png assets/icon.png
+
+      - name: Generate Android icons
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#000000' --iconBackgroundColorDark '#000000'
 
       - name: Sync Android
         run: npx cap sync android
