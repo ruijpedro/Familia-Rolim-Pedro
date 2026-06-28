@@ -1,5 +1,5 @@
-// Configuração futura do módulo Google reutilizável RJP.
-// Substituir quando criares as credenciais na Google Cloud.
+// Configuração do módulo Google reutilizável RJP.
+// Depois de criares credenciais na Google Cloud, substitui estes valores.
 export const GOOGLE_CONFIG = {
   APP_NAME: 'Família Rolim Pedro',
   CLIENT_ID: 'COLOCAR_CLIENT_ID.apps.googleusercontent.com',
