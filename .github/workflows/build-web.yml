@@ -1,9 +1,9 @@
-name: Build Família Rolim Pedro WebApp
+name: Build WebApp
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,28 +13,22 @@ permissions:
 jobs:
   build-web:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 25
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install dependencies
+      - name: Reset npm
         run: |
+          npm cache clean --force
           rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
-
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --legacy-peer-deps
       - name: Build WebApp
         run: npm run build
-
-      - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload WebApp artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: Familia-Rolim-Pedro-WebApp
           path: dist
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
