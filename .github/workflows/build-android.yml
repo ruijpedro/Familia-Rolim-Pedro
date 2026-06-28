@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Família Rolim Pedro APK
 
 on:
   workflow_dispatch:
@@ -21,8 +21,13 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - name: Reset npm
+        run: |
+          npm install -g npm@10.9.2
+          npm cache clean --force
+          rm -rf node_modules package-lock.json
       - name: Install dependencies
-        run: npm install --no-audit --no-fund --legacy-peer-deps
+        run: npm install --no-audit --no-fund --legacy-peer-deps --no-package-lock
       - name: Build WebApp
         run: npm run build
       - name: Add Android platform if missing
@@ -32,8 +37,8 @@ jobs:
       - name: Build APK
         run: |
           cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
