@@ -1,15 +1,10 @@
-// Configuração do módulo Google reutilizável RJP.
-// Depois de criares credenciais na Google Cloud, substitui estes valores.
-export const GOOGLE_CONFIG = {
-  APP_NAME: 'Família Rolim Pedro',
-  CLIENT_ID: 'COLOCAR_CLIENT_ID.apps.googleusercontent.com',
-  API_KEY: 'COLOCAR_API_KEY',
-  SHEET_ID: 'COLOCAR_ID_DA_GOOGLE_SHEET',
-  CALENDAR_ID: 'primary',
-  DRIVE_FOLDER_ID: 'COLOCAR_ID_DA_PASTA_DRIVE',
-  SCOPES: [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive.file',
-    'https://www.googleapis.com/auth/calendar.events'
-  ]
-}
+// Família Rolim Pedro - configuração Google Apps Script
+// 1) Criar um calendário partilhado no Google Calendar: "Família Rolim Pedro"
+// 2) Partilhar com Rui, Gina, Constança e Lourenço com permissão para editar eventos
+// 3) Criar Apps Script com o ficheiro google-apps-script/Code.gs
+// 4) Publicar como Web App e colar aqui o URL terminado em /exec
+
+export const GOOGLE_SCRIPT_URL = ''; // exemplo: https://script.google.com/macros/s/AKfycb.../exec
+
+export const FAMILY_CALENDAR_NAME = 'Família Rolim Pedro';
+export const FAMILY_MEMBERS = ['Rui', 'Gina', 'Constança', 'Lourenço'];

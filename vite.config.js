@@ -3,6 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/Familia-Rolim-Pedro/',
-  build: { outDir: 'dist' }
+  base: '/Familia-Rolim-Pedro/'
 })

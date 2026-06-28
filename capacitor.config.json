@@ -11,9 +11,6 @@
       "backgroundColor": "#050505",
       "showSpinner": false
     },
-    "StatusBar": {
-      "style": "dark",
-      "backgroundColor": "#050505"
-    }
+    "StatusBar": { "style": "dark", "backgroundColor": "#050505" }
   }
 }
