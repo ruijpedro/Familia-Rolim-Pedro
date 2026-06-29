@@ -1,123 +1,55 @@
-/*******************************************************
- * Família Rolim Pedro - Google Apps Script
- * Sincroniza a app com um Google Calendar familiar.
- *
- * PASSOS:
- * 1. Google Calendar > criar calendário "Família Rolim Pedro".
- * 2. Partilhar esse calendário com todas as contas da família.
- * 3. Definir FAMILY_CALENDAR_ID abaixo.
- * 4. Implementar > Nova implementação > App Web.
- * 5. Executar como: Eu.
- * 6. Quem tem acesso: Qualquer pessoa com o link.
- *******************************************************/
+// Família Rolim Pedro - Google Apps Script
+// Preencher estes dados antes de publicar:
+const FAMILY_CALENDAR_ID = 'COLOCAR_ID_DO_CALENDARIO_FAMILIAR_AQUI';
+const STUDY_SHEET_ID = ''; // opcional: ID da Google Sheet da RJP Study
+const SWIM_SHEET_ID = '';  // opcional: ID da Google Sheet SwimTrack
 
-const FAMILY_CALENDAR_ID = 'COLOCA_AQUI_O_ID_DO_CALENDARIO_FAMILIAR';
-const SHEET_NAME = 'Familia_Rolim_Pedro_Dados';
-
-function doGet(e) {
-  return handle_(e);
+function doPost(e){
+  try{
+    const req = JSON.parse(e.postData.contents || '{}');
+    let out = {ok:false,error:'Ação desconhecida'};
+    if(req.action === 'syncEvents') out = syncEvents(req.events || []);
+    if(req.action === 'listEvents') out = listEvents();
+    if(req.action === 'importStudy') out = importStudy();
+    if(req.action === 'importSwim') out = importSwim();
+    return json(out);
+  }catch(err){ return json({ok:false,error:String(err.message || err)}); }
 }
-
-function doPost(e) {
-  return handle_(e);
+function doGet(){ return json({ok:true,app:'Família Rolim Pedro'}); }
+function json(o){ return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+function cal(){ return CalendarApp.getCalendarById(FAMILY_CALENDAR_ID); }
+function syncEvents(events){
+  const c = cal(); if(!c) throw new Error('Calendário familiar não encontrado. Confirma o FAMILY_CALENDAR_ID.');
+  events.forEach(ev=>{
+    const d = ev.data ? new Date(ev.data + 'T09:00:00') : new Date();
+    const title = `[${ev.origem || 'Família'}] ${ev.titulo || 'Evento'}`;
+    c.createAllDayEvent(title, d, { description: `Membro: ${ev.membro || 'Todos'}\nNotas: ${ev.notas || ''}` });
+  });
+  return {ok:true,count:events.length};
 }
-
-function handle_(e) {
-  try {
-    const p = getParams_(e);
-    const action = p.action || 'ping';
-    if (action === 'ping') return json_({ ok: true, app: 'Familia Rolim Pedro', time: new Date().toISOString() });
-    if (action === 'listEvents') return json_(listEvents_(p));
-    if (action === 'addEvent') return json_(addEvent_(p));
-    if (action === 'updateEvent') return json_(updateEvent_(p));
-    if (action === 'deleteEvent') return json_(deleteEvent_(p));
-    if (action === 'saveData') return json_(saveData_(p));
-    if (action === 'loadData') return json_(loadData_());
-    return json_({ ok: false, error: 'Ação desconhecida: ' + action });
-  } catch (err) {
-    return json_({ ok: false, error: String(err && err.message ? err.message : err) });
-  }
+function listEvents(){
+  const c = cal(); if(!c) throw new Error('Calendário familiar não encontrado.');
+  const start = new Date(); start.setDate(start.getDate()-30);
+  const end = new Date(); end.setDate(end.getDate()+365);
+  const events = c.getEvents(start,end).map(e=>({ id:e.getId(), titulo:e.getTitle(), data:Utilities.formatDate(e.getStartTime(),Session.getScriptTimeZone(),'yyyy-MM-dd'), hora:Utilities.formatDate(e.getStartTime(),Session.getScriptTimeZone(),'HH:mm'), membro:'Todos', origem:'Google Calendar', notas:e.getDescription() }));
+  return {ok:true,events};
 }
-
-function getParams_(e) {
-  let p = Object.assign({}, e && e.parameter ? e.parameter : {});
-  if (e && e.postData && e.postData.contents) {
-    try { p = Object.assign(p, JSON.parse(e.postData.contents)); } catch (err) {}
-  }
-  return p;
-}
-
-function calendar_() {
-  const cal = CalendarApp.getCalendarById(FAMILY_CALENDAR_ID);
-  if (!cal) throw new Error('Calendário não encontrado. Confirma o FAMILY_CALENDAR_ID e as permissões.');
-  return cal;
-}
-
-function listEvents_(p) {
-  const start = p.start ? new Date(p.start) : new Date();
-  const end = p.end ? new Date(p.end) : new Date(Date.now() + 1000 * 60 * 60 * 24 * 90);
-  const events = calendar_().getEvents(start, end).map(ev => ({
-    id: ev.getId(),
-    titulo: ev.getTitle(),
-    inicio: ev.getStartTime().toISOString(),
-    fim: ev.getEndTime().toISOString(),
-    descricao: ev.getDescription() || '',
-    local: ev.getLocation() || '',
-    calendario: FAMILY_CALENDAR_ID
+function importStudy(){ return {ok:true,items:readSheet(STUDY_SHEET_ID,'RJP Study')}; }
+function importSwim(){ return {ok:true,items:readSheet(SWIM_SHEET_ID,'SwimTrack')}; }
+function readSheet(id, origem){
+  if(!id) return [];
+  const sh = SpreadsheetApp.openById(id).getSheets()[0];
+  const values = sh.getDataRange().getValues();
+  const head = values.shift().map(h=>String(h).toLowerCase());
+  return values.filter(r=>r.join('').trim()).map((r,i)=>({
+    id: origem + '_' + i,
+    titulo: val(r,head,['titulo','nome','disciplina','prova','evento']) || origem,
+    data: formatDate(val(r,head,['data','dia','date'])),
+    hora: val(r,head,['hora','time']) || '',
+    membro: val(r,head,['membro','aluno','atleta']) || 'Todos',
+    origem,
+    notas: val(r,head,['notas','observações','obs']) || ''
   }));
-  return { ok: true, events };
 }
-
-function addEvent_(p) {
-  const title = p.titulo || p.title || 'Evento Família';
-  const start = new Date(p.inicio || p.start);
-  const end = new Date(p.fim || p.end || (start.getTime() + 60 * 60 * 1000));
-  const desc = p.descricao || p.description || '';
-  const location = p.local || p.location || '';
-  const ev = calendar_().createEvent(title, start, end, { description: desc, location });
-  return { ok: true, id: ev.getId(), htmlLink: 'https://calendar.google.com/calendar/u/0/r/eventedit/' + encodeURIComponent(ev.getId()) };
-}
-
-function updateEvent_(p) {
-  const ev = calendar_().getEventById(p.id);
-  if (!ev) throw new Error('Evento não encontrado: ' + p.id);
-  if (p.titulo || p.title) ev.setTitle(p.titulo || p.title);
-  if (p.inicio || p.start) ev.setTime(new Date(p.inicio || p.start), new Date(p.fim || p.end));
-  if (p.descricao || p.description) ev.setDescription(p.descricao || p.description);
-  if (p.local || p.location) ev.setLocation(p.local || p.location);
-  return { ok: true, id: ev.getId() };
-}
-
-function deleteEvent_(p) {
-  const ev = calendar_().getEventById(p.id);
-  if (!ev) throw new Error('Evento não encontrado: ' + p.id);
-  ev.deleteEvent();
-  return { ok: true, id: p.id };
-}
-
-function saveData_(p) {
-  const ss = getSpreadsheet_();
-  const sh = ss.getSheetByName('dados') || ss.insertSheet('dados');
-  sh.clear();
-  sh.appendRow(['updatedAt', 'json']);
-  sh.appendRow([new Date(), p.json || '{}']);
-  return { ok: true, spreadsheetUrl: ss.getUrl() };
-}
-
-function loadData_() {
-  const ss = getSpreadsheet_();
-  const sh = ss.getSheetByName('dados');
-  if (!sh || sh.getLastRow() < 2) return { ok: true, data: null };
-  return { ok: true, data: sh.getRange(2, 2).getValue() };
-}
-
-function getSpreadsheet_() {
-  const files = DriveApp.getFilesByName(SHEET_NAME);
-  if (files.hasNext()) return SpreadsheetApp.open(files.next());
-  const ss = SpreadsheetApp.create(SHEET_NAME);
-  return ss;
-}
-
-function json_(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
-}
+function val(r,head,names){ for(const n of names){ const i=head.indexOf(n); if(i>=0) return r[i]; } return ''; }
+function formatDate(v){ if(v instanceof Date) return Utilities.formatDate(v,Session.getScriptTimeZone(),'yyyy-MM-dd'); return String(v||'').slice(0,10); }
