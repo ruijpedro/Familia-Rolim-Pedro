@@ -13,20 +13,19 @@ permissions:
 jobs:
   build-web:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --no-audit --no-fund --legacy-peer-deps --no-package-lock
+        run: npm install --no-audit --no-fund --legacy-peer-deps
       - name: Build WebApp
         run: npm run build
-      - name: Upload WebApp artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: Familia-Rolim-Pedro-WebApp
           path: dist
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

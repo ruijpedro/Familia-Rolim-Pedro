@@ -1,4 +1,4 @@
-name: Build Família Rolim Pedro APK
+name: Build Android APK
 
 on:
   workflow_dispatch:
@@ -14,40 +14,45 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-      - name: Reset npm
-        run: |
-          npm install -g npm@10.9.2
-          npm cache clean --force
-          rm -rf node_modules package-lock.json
+
       - name: Install dependencies
-        run: npm install --no-audit --no-fund --legacy-peer-deps --no-package-lock
+        run: |
+          rm -rf node_modules
+          npm install --no-audit --no-fund --legacy-peer-deps
+
       - name: Build WebApp
         run: npm run build
+
       - name: Add Android platform if missing
         run: |
-          if [ ! -d android ]; then npx cap add android; fi
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
           npx cap sync android
 
-      - name: Apply custom Android icon and manifest
+      - name: Force app icon and manifest
         run: |
           mkdir -p android/app/src/main/res
-          cp -f src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp -R src/main/res/* android/app/src/main/res/
-          echo "Ícone e AndroidManifest aplicados."
+          cp src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+
       - name: Build APK
         run: |
           cd android
-          chmod +x ./gradlew
+          chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Familia-Rolim-Pedro-debug-apk
+          name: Familia-Rolim-Pedro-APK
           path: android/app/build/outputs/apk/debug/*.apk
