@@ -12,25 +12,36 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
+      - name: Reset npm
+        run: |
+          npm install -g npm@10.9.2
+          npm cache clean --force
+          rm -rf node_modules package-lock.json
+
       - name: Install dependencies
         run: |
-          rm -rf node_modules
-          npm install --no-audit --no-fund --legacy-peer-deps
+          npm install --no-audit --no-fund --legacy-peer-deps --no-package-lock
+          npx vite --version
+          npx cap --version
 
       - name: Build WebApp
-        run: npm run build
+        run: npx vite build
 
       - name: Add Android platform if missing
         run: |
