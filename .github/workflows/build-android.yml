@@ -34,6 +34,13 @@ jobs:
         run: |
           if [ ! -d android ]; then npx cap add android; fi
           npx cap sync android
+
+      - name: Apply custom Android icon and manifest
+        run: |
+          mkdir -p android/app/src/main/res
+          cp -f src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          cp -R src/main/res/* android/app/src/main/res/
+          echo "Ícone e AndroidManifest aplicados."
       - name: Build APK
         run: |
           cd android
