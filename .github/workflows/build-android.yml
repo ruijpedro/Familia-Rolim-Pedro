@@ -36,7 +36,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install --no-audit --no-fund --legacy-peer-deps --no-package-lock
+          npm install vite@^6.0.7 @vitejs/plugin-react@^4.3.4 react@^19.0.0 react-dom@^19.0.0 lucide-react@^0.468.0 jspdf@^2.5.2 @capacitor/core@^7.2.0 @capacitor/cli@^7.2.0 @capacitor/android@^7.2.0 --no-audit --no-fund --legacy-peer-deps --no-package-lock
           npx vite --version
           npx cap --version
 
