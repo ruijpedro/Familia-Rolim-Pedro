@@ -1,7 +1,6 @@
 // Família Rolim Pedro - Configuração Google
-// 1) Criar Google Apps Script com google-apps-script/Code.gs
-// 2) Publicar como Web App
-// 3) Colar aqui o URL terminado em /exec
+// V3.1: podes deixar vazio e colar o URL dentro da app, no separador Sync.
+// Alternativa: colar aqui o URL /exec do Apps Script para vir já pré-configurado.
 export const GOOGLE_SCRIPT_URL = ''
 
 export const FAMILY_MEMBERS = ['Rui', 'Gina', 'Constança', 'Lourenço']

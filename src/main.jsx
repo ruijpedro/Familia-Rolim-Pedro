@@ -7,6 +7,7 @@ import './style.css'
 
 const logoUrl = `${import.meta.env.BASE_URL}logo.png`
 const membros = FAMILY_MEMBERS?.length ? FAMILY_MEMBERS : ['Rui','Gina','Constança','Lourenço']
+const configuredScriptUrl = () => (localStorage.getItem('frp_google_script_url') || GOOGLE_SCRIPT_URL || '').trim()
 const todayISO = () => new Date().toISOString().slice(0,10)
 const uid = () => `${Date.now()}_${Math.random().toString(16).slice(2)}`
 const emptyForm = { titulo:'', data:todayISO(), hora:'', membro:'Todos', notas:'', origem:'Família', prioridade:'Normal' }
@@ -33,8 +34,9 @@ function migrate(){
 function saveAll(next){ localStorage.setItem(STORAGE, JSON.stringify(next)); return next }
 
 async function api(action, payload={}){
-  if(!GOOGLE_SCRIPT_URL) throw new Error('Falta colar o URL do Apps Script em src/googleConfig.js')
-  const res = await fetch(GOOGLE_SCRIPT_URL, { method:'POST', body: JSON.stringify({action, ...payload}) })
+  const url = configuredScriptUrl()
+  if(!url) throw new Error('Falta configurar o URL do Apps Script no separador Sync')
+  const res = await fetch(url, { method:'POST', body: JSON.stringify({action, ...payload}) })
   const json = await res.json().catch(()=>({ok:false,error:'Resposta inválida do Apps Script'}))
   if(!json.ok) throw new Error(json.error || 'Erro no Apps Script')
   return json
@@ -48,6 +50,7 @@ function App(){
   const [tab,setTab]=useState('inicio')
   const [data,setData]=useState(migrate)
   const [user,setUser]=useState(localStorage.getItem('frp_user') || 'Rui')
+  const [scriptUrl,setScriptUrl]=useState(configuredScriptUrl())
   const [msg,setMsg]=useState('')
   const [q,setQ]=useState('')
   const [busy,setBusy]=useState(false)
@@ -56,7 +59,7 @@ function App(){
   const setU = u => { setUser(u); localStorage.setItem('frp_user',u) }
 
   useEffect(()=>{ localStorage.setItem(STORAGE, JSON.stringify(data)) },[])
-  useEffect(()=>{ if(data.autoSync && GOOGLE_SCRIPT_URL){ setTimeout(()=>syncTudo(true),600) } },[])
+  useEffect(()=>{ if(data.autoSync && scriptUrl){ setTimeout(()=>syncTudo(true),600) } },[])
 
   const addItem = (kind, item, addCalendar=true) => {
     const novo = { id:uid(), ...item }
@@ -95,7 +98,7 @@ function App(){
     <main>
       <div className="search"><Search/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Pesquisar em tudo..."/></div>
       {msg && <div className={msg.includes('Falta')||msg.includes('Erro')?'notice warn':'notice'}>{msg}</div>}
-      {!GOOGLE_SCRIPT_URL && <div className="notice warn">Falta colar o URL do Apps Script em <b>src/googleConfig.js</b>. A app funciona offline, mas não sincroniza.</div>}
+      {!scriptUrl && <div className="notice warn">Falta configurar o URL do Apps Script no separador <b>Sync</b>. A app funciona offline, mas não sincroniza.</div>}
       {filtered ? <SearchResults items={filtered}/> : <>
         {tab==='inicio' && <Inicio data={data} user={user} proximos={proximos} setTab={setTab} syncTudo={syncTudo} readCalendar={readCalendar} busy={busy}/>} 
         {tab==='calendario' && <Calendario data={data} addItem={addItem} removeItem={removeItem} syncTudo={syncTudo} syncCalendar={syncCalendar} readCalendar={readCalendar} busy={busy}/>} 
@@ -109,7 +112,7 @@ function App(){
         {tab==='despesas' && <Generic title="Despesas" kind="despesas" data={data.despesas} addItem={addItem} removeItem={removeItem}/>} 
         {tab==='veiculos' && <Generic title="Veículos" kind="veiculos" data={data.veiculos} addItem={addItem} removeItem={removeItem}/>} 
         {tab==='saude' && <Generic title="Saúde" kind="saude" data={data.saude} addItem={addItem} removeItem={removeItem}/>} 
-        {tab==='definicoes' && <Definicoes data={data} persist={persist} syncTudo={syncTudo} busy={busy}/>} 
+        {tab==='definicoes' && <Definicoes data={data} persist={persist} syncTudo={syncTudo} busy={busy} scriptUrl={scriptUrl} setScriptUrl={setScriptUrl} flash={flash}/>} 
       </>}
     </main>
     <nav>{sections.map(([id,label,Icon])=><button key={id} className={tab===id?'active':''} onClick={()=>{setQ('');setTab(id)}}><Icon size={19}/><span>{label}</span></button>)}</nav>
@@ -127,7 +130,24 @@ function Generic({title,kind,data,addItem,removeItem,toggle,noDate}){return <><T
 function Calendario({data,addItem,removeItem,syncTudo,syncCalendar,readCalendar,busy}){const evs=[...data.eventos].sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora)); return <><Toolbar title="Calendário familiar"/><div className="quick"><button onClick={()=>syncTudo(false)} disabled={busy}><Cloud/> Sync tudo</button><button onClick={syncCalendar} disabled={busy}><RefreshCw/> Enviar</button><button onClick={readCalendar} disabled={busy}><CalendarDays/> Ler Google</button></div><MiniForm kind="eventos" addItem={(k,item)=>addItem('eventos',toEvent(item,'Família'),false)}/><Card title="Eventos familiares">{evs.map(e=><Event key={e.id} e={e} onDelete={()=>removeItem('eventos',e.id)}/>)}</Card></>}
 function Familia({data}){return <><Toolbar title="Família"/><div className="people">{membros.map(m=><div key={m}><div className="avatar">{m[0]}</div><b>{m}</b><p>{data.eventos.filter(e=>e.membro===m||e.membro==='Todos').length} eventos</p><p>{data.tarefas.filter(t=>t.membro===m||t.resp===m).length} tarefas</p></div>)}</div></>}
 function ImportPage({title,kind,icon,data,importer,removeItem,addItem,busy}){return <><Toolbar title={title}/><section className="hero smallHero">{icon}<h1>{title}</h1><p>Agora também entra na sincronização automática. O botão fica como importação manual.</p></section><div className="quick"><button onClick={importer} disabled={busy}><UploadCloud/> Importar agora</button></div><MiniForm kind={kind} addItem={addItem}/><Card title={`${data.length} itens`}>{data.map(x=><Item key={x.id} item={x} onDelete={()=>removeItem(kind,x.id)}/>)}</Card></>}
-function Definicoes({data,persist,syncTudo,busy}){return <><Toolbar title="Sincronização"/><Card title="Estado Google"><div className="item"><Cloud/><div><b>{GOOGLE_SCRIPT_URL?'Apps Script configurado':'Apps Script por configurar'}</b><p>Última sincronização: {data.syncAt || 'sem registo'}</p></div></div><label className="switch"><input type="checkbox" checked={!!data.autoSync} onChange={e=>persist({...data,autoSync:e.target.checked})}/><span>Sincronizar automaticamente ao abrir a app</span></label></Card><div className="quick"><button onClick={()=>syncTudo(false)} disabled={busy}><RefreshCw/> Testar sincronização</button></div><Card title="O que sincroniza"><p>Calendário familiar, tarefas com data, RJP Study, SwimTrack, saúde, veículos, despesas, refeições e férias.</p></Card></>}
+function Definicoes({data,persist,syncTudo,busy,scriptUrl,setScriptUrl,flash}){
+  const [url,setUrl]=useState(scriptUrl || '')
+  const guardarUrl=()=>{
+    const clean=url.trim()
+    localStorage.setItem('frp_google_script_url', clean)
+    setScriptUrl(clean)
+    flash(clean ? 'URL do Apps Script guardado. Já podes testar a sincronização.' : 'URL removido. A app fica offline.')
+  }
+  return <><Toolbar title="Sincronização"/>
+    <Card title="Ligar ao Google Apps Script">
+      <div className="item"><Cloud/><div><b>{scriptUrl?'Apps Script configurado':'Apps Script por configurar'}</b><p>Última sincronização: {data.syncAt || 'sem registo'}</p></div></div>
+      <div className="form oneLine"><input value={url} onChange={e=>setUrl(e.target.value)} placeholder="Colar aqui o URL /exec do Apps Script"/><button type="button" onClick={guardarUrl}><Cloud/> Guardar URL</button></div>
+      <label className="switch"><input type="checkbox" checked={!!data.autoSync} onChange={e=>persist({...data,autoSync:e.target.checked})}/><span>Sincronizar automaticamente ao abrir a app</span></label>
+    </Card>
+    <div className="quick"><button onClick={()=>syncTudo(false)} disabled={busy || !scriptUrl}><RefreshCw/> Testar sincronização</button></div>
+    <Card title="O que sincroniza"><p>Calendário familiar, tarefas com data, RJP Study, SwimTrack, saúde, veículos, despesas, refeições e férias.</p></Card>
+  </>
+}
 function SearchResults({items}){return <Card title="Resultados da pesquisa">{items.map((x,i)=><Item key={i} item={{...x,titulo:x.titulo||x.nome||x.destino,notas:labelOf(x.kind)}} />)}</Card>}
 function Toolbar({title}){return <div className="toolbar"><h1>{title}</h1></div>}
 function slug(s='familia'){return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-')}

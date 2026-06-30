@@ -1,31 +1,26 @@
-# Família Rolim Pedro V3 - Hub Familiar Inteligente
+# Família Rolim Pedro V3.1 — Hub Familiar com Sync Google
 
-Versão V3 com WebApp e APK unificadas.
+App familiar React/Vite/Capacitor com calendário familiar, tarefas, compras, refeições, férias, despesas, veículos, saúde, RJP Study e SwimTrack.
 
-## Principais novidades
+## Novidade V3.1
 
-- Sincronização automática ao abrir a app.
-- Botão **Sincronizar tudo**: Família + Google Calendar + RJP Study + SwimTrack.
-- Calendário familiar único e partilhado.
-- Evita duplicados no Google Calendar através de `frpId`.
-- RJP Study e SwimTrack entram no calendário familiar.
-- Separador **Sync** para testar e controlar a sincronização.
-- Ícone Android preservado.
-- Workflows corrigidos para WebApp e APK.
+- O URL do Apps Script já pode ser colado dentro da própria app, no separador **Sync**.
+- Não é preciso recompilar a app só para trocar o URL.
+- WebApp e APK usam o mesmo ecrã e a mesma configuração.
 
-## Configuração Google
+## Configuração do calendário
 
-1. Criar um Google Calendar chamado, por exemplo, `Família Rolim Pedro`.
-2. Partilhar com Rui, Gina, Constança e Lourenço com permissão para editar eventos.
-3. Copiar o ID do calendário.
-4. Criar Apps Script e colar `google-apps-script/Code.gs`.
-5. No `Code.gs`, preencher:
-   - `FAMILY_CALENDAR_ID`
-   - `STUDY_SHEET_ID` se quiser importar da Study
-   - `SWIM_SHEET_ID` se quiser importar do SwimTrack
-6. Publicar como Web App.
-7. Copiar o URL `/exec` para `src/googleConfig.js`.
+Lê o ficheiro:
 
-## GitHub
+`README_CONFIGURAR_CALENDARIO.md`
 
-Extrair o ZIP e enviar os ficheiros soltos para a raiz do repositório.
+## Desenvolvimento
+
+```bash
+npm install --no-audit --no-fund --legacy-peer-deps
+npm run build
+```
+
+## Android
+
+O workflow `.github/workflows/build-android.yml` compila a APK.
