@@ -13,33 +13,20 @@ permissions:
 jobs:
   build-web:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Reset npm
-        run: |
-          npm install -g npm@10.9.2
-          npm cache clean --force
-          rm -rf node_modules package-lock.json
-
       - name: Install dependencies
-        run: npm install vite@^6.0.7 @vitejs/plugin-react@^4.3.4 react@^19.0.0 react-dom@^19.0.0 lucide-react@^0.468.0 jspdf@^2.5.2 @capacitor/core@^7.2.0 @capacitor/cli@^7.2.0 @capacitor/android@^7.2.0 --no-audit --no-fund --legacy-peer-deps --no-package-lock
-
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --no-audit --no-fund --legacy-peer-deps --no-package-lock
       - name: Build WebApp
         run: npx vite build
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v4
