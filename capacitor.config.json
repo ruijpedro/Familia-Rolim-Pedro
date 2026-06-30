@@ -1,0 +1,9 @@
+{
+  "appId": "pt.rjp.familiarolimpedro",
+  "appName": "Família Rolim Pedro",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
