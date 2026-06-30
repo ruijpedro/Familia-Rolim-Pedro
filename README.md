@@ -1,24 +1,31 @@
-# Família Rolim Pedro V2.3
+# Família Rolim Pedro V3 - Hub Familiar Inteligente
 
-Versão unificada para WebApp e APK: a interface é a mesma nas duas plataformas.
+Versão V3 com WebApp e APK unificadas.
 
-## Funcionalidades
-- Calendário familiar sincronizado por Google Apps Script.
-- Tarefas, compras, refeições, férias, despesas, veículos e saúde funcionais.
-- Importação da RJP Study para o calendário familiar.
-- Importação do SwimTrack para o calendário familiar.
-- Exportação PDF e ICS.
-- Ícone Android reposto a partir de `src/main/res`.
+## Principais novidades
+
+- Sincronização automática ao abrir a app.
+- Botão **Sincronizar tudo**: Família + Google Calendar + RJP Study + SwimTrack.
+- Calendário familiar único e partilhado.
+- Evita duplicados no Google Calendar através de `frpId`.
+- RJP Study e SwimTrack entram no calendário familiar.
+- Separador **Sync** para testar e controlar a sincronização.
+- Ícone Android preservado.
+- Workflows corrigidos para WebApp e APK.
 
 ## Configuração Google
-1. Criar um Google Calendar partilhado: `Família Rolim Pedro`.
-2. Partilhar com as contas Rui, Gina, Constança e Lourenço com permissão de edição.
+
+1. Criar um Google Calendar chamado, por exemplo, `Família Rolim Pedro`.
+2. Partilhar com Rui, Gina, Constança e Lourenço com permissão para editar eventos.
 3. Copiar o ID do calendário.
-4. Criar Google Apps Script.
-5. Colar `google-apps-script/Code.gs`.
-6. Colocar o ID em `FAMILY_CALENDAR_ID`.
-7. Publicar como Web App.
-8. Colar o URL `/exec` em `src/googleConfig.js`.
+4. Criar Apps Script e colar `google-apps-script/Code.gs`.
+5. No `Code.gs`, preencher:
+   - `FAMILY_CALENDAR_ID`
+   - `STUDY_SHEET_ID` se quiser importar da Study
+   - `SWIM_SHEET_ID` se quiser importar do SwimTrack
+6. Publicar como Web App.
+7. Copiar o URL `/exec` para `src/googleConfig.js`.
 
 ## GitHub
-Fazer upload dos ficheiros soltos para a raiz do repositório: `src`, `public`, `package.json`, `vite.config.js`, `.github`, etc.
+
+Extrair o ZIP e enviar os ficheiros soltos para a raiz do repositório.
