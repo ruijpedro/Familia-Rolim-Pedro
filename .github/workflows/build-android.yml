@@ -46,6 +46,14 @@ jobs:
       - name: Sync Android
         run: npx cap sync android
 
+      - name: Restore custom Android icon and manifest
+        run: |
+          echo "A repor ícone e AndroidManifest personalizados..."
+          cp -f src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          mkdir -p android/app/src/main/res
+          cp -R src/main/res/* android/app/src/main/res/
+          ls -R android/app/src/main/res/mipmap-xxxhdpi
+
       - name: Build APK
         run: |
           cd android
