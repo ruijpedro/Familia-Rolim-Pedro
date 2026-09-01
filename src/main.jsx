@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { Home, CheckSquare, ShoppingCart, CalendarDays, Users, Utensils, Plane, Waves, GraduationCap, Bell, Search, Plus, Download, RefreshCw, Trash2, WalletCards, Car, HeartPulse, UploadCloud, Settings, Cloud, Clock, Sparkles } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import { GOOGLE_SCRIPT_URL, FAMILY_MEMBERS } from './googleConfig.js'
@@ -11,7 +12,7 @@ const configuredScriptUrl = () => (localStorage.getItem('frp_google_script_url')
 const todayISO = () => new Date().toISOString().slice(0,10)
 const uid = () => `${Date.now()}_${Math.random().toString(16).slice(2)}`
 const emptyForm = { titulo:'', data:todayISO(), hora:'', membro:'Todos', notas:'', origem:'Família', prioridade:'Normal' }
-const STORAGE = 'frp_v70'
+const STORAGE = 'frp_v80'
 
 const initial = {
   tarefas: [], compras: [], refeicoes: [], ferias: [], despesas: [], veiculos: [], saude: [], eventos: [], study: [], swim: [],
@@ -33,13 +34,69 @@ function migrate(){
 }
 function saveAll(next){ localStorage.setItem(STORAGE, JSON.stringify(next)); return next }
 
-async function api(action, payload={}){
+function jsonp(url, params={}){
+  return new Promise((resolve,reject)=>{
+    const cb = `__frp_cb_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    const timer = setTimeout(()=>cleanup(new Error('Tempo esgotado ao contactar o RJP Hub')), 20000)
+    const script = document.createElement('script')
+    const cleanup = (err, value) => {
+      clearTimeout(timer)
+      try{ delete window[cb] }catch{}
+      script.remove()
+      err ? reject(err) : resolve(value)
+    }
+    window[cb] = value => cleanup(null, value)
+    const qs = new URLSearchParams({ action:params.action || 'ping', callback:cb })
+    if(params.payload !== undefined) qs.set('payload', JSON.stringify(params.payload))
+    script.onerror = () => cleanup(new Error('Não foi possível contactar o RJP Hub'))
+    script.src = `${url}${url.includes('?')?'&':'?'}${qs.toString()}`
+    document.head.appendChild(script)
+  })
+}
+
+async function apiWeb(action, payload={}){
   const url = configuredScriptUrl()
   if(!url) throw new Error('Falta configurar o URL do Apps Script no separador Sync')
-  const res = await fetch(url, { method:'POST', body: JSON.stringify({action, ...payload}) })
-  const json = await res.json().catch(()=>({ok:false,error:'Resposta inválida do Apps Script'}))
-  if(!json.ok) throw new Error(json.error || 'Erro no Apps Script')
-  return json
+  const r = await jsonp(url,{action,payload})
+  if(!r?.ok) throw new Error(r?.error || 'Erro no RJP Hub')
+  return r
+}
+
+async function apiNative(action, payload={}){
+  const url = configuredScriptUrl()
+  if(!url) throw new Error('Falta configurar o URL do Apps Script no separador Sync')
+  const r = await CapacitorHttp.post({
+    url,
+    headers:{'Content-Type':'application/json'},
+    data:{action,...payload},
+    connectTimeout:20000,
+    readTimeout:30000
+  })
+  const data = typeof r.data === 'string' ? JSON.parse(r.data) : r.data
+  if(!data?.ok) throw new Error(data?.error || 'Erro no RJP Hub')
+  return data
+}
+
+async function api(action, payload={}){
+  if(Capacitor.isNativePlatform()) return apiNative(action,payload)
+
+  // GitHub Pages/WebApp: JSONP evita o bloqueio CORS do Google Apps Script.
+  // Para não ultrapassar limites de URL, os eventos são enviados em pequenos lotes.
+  if(action === 'syncEvents'){
+    const events = payload.events || []
+    let count = 0
+    for(let i=0;i<events.length;i+=8){
+      const r = await apiWeb('syncEvents',{events:events.slice(i,i+8)})
+      count += Number(r.count || 0)
+    }
+    return {ok:true,count}
+  }
+  if(action === 'syncHub'){
+    if((payload.events||[]).length) await api('syncEvents',{events:payload.events})
+    // O Hub importa Study/Swim e devolve o Calendar. Tarefas/compras continuam offline nesta fase.
+    return apiWeb('syncHub',{})
+  }
+  return apiWeb(action,payload)
 }
 function toEvent(item, origem='Família'){
   return { id:item.eventId || item.id || uid(), titulo:item.titulo || item.nome || item.destino || origem, data:item.data || item.inicio || todayISO(), hora:item.hora || '', membro:item.membro || item.resp || 'Todos', origem:item.origem || origem, notas:item.notas || item.obs || '', prioridade:item.prioridade || 'Normal' }
@@ -81,7 +138,7 @@ function App(){
       const calendarEvents = r.events || []
       const evs = uniqueById([...calendarEvents, ...study.map(x=>toEvent(x,'RJP Study')), ...swim.map(x=>toEvent(x,'SwimTrack')), ...data.eventos])
       persist({...data, study:uniqueById([...study,...data.study]), swim:uniqueById([...swim,...data.swim]), eventos:evs, syncAt:new Date().toLocaleString('pt-PT')})
-      if(!silent) flash('V7 sincronizada: Família + Study + SwimTrack + Calendário')
+      if(!silent) flash('V8 sincronizada: Família + Study + SwimTrack + Calendário')
     }catch(e){ if(!silent) flash(e.message) }
     finally{ setBusy(false) }
   }
@@ -121,7 +178,7 @@ function App(){
 
 function labelOf(kind){ return ({tarefas:'Tarefa', compras:'Compras', refeicoes:'Refeição', ferias:'Férias', despesas:'Despesa', veiculos:'Veículo', saude:'Saúde', eventos:'Família', study:'RJP Study', swim:'SwimTrack'})[kind] || kind }
 function Card({title,children,action,onClick}){return <section className="card"><div className="cardTop"><h2>{title}</h2>{action&&<button onClick={onClick}>{action}</button>}</div>{children}</section>}
-function Inicio({data,user,proximos,setTab,syncTudo,readCalendar,busy}){return <><section className="hero"><Sparkles/><h1>Bom dia, {user}</h1><p>Family Hub IA: Study, SwimTrack, Casa, tarefas e Google Calendar num só painel.</p><small>{data.tarefas.filter(x=>!x.ok).length} tarefas abertas · {proximos.length} próximos eventos · Última sync: {data.syncAt || 'ainda não sincronizado'}</small></section><div className="quick"><button onClick={()=>syncTudo(false)} disabled={busy}><Cloud/> Sincronizar tudo</button><button onClick={readCalendar} disabled={busy}><CalendarDays/> Ler Calendar</button><button onClick={()=>exportPDF(data)}><Download/> PDF</button><button onClick={()=>exportICS(data.eventos)}><Download/> ICS</button></div><Card title="Hoje e próximos dias" action="Ver calendário" onClick={()=>setTab('calendario')}>{proximos.slice(0,6).map(e=><Event key={e.id} e={e}/>)}</Card><Card title="Tarefas pendentes" action="Ver todas" onClick={()=>setTab('tarefas')}>{data.tarefas.filter(x=>!x.ok).slice(0,5).map(t=><Item key={t.id} item={t}/>)}</Card><div className="stats"><Stat n={data.compras.filter(x=>!x.ok).length} t="Compras"/><Stat n={data.study.length} t="Study"/><Stat n={data.swim.length} t="SwimTrack"/></div></>}
+function Inicio({data,user,proximos,setTab,syncTudo,readCalendar,busy}){return <><section className="hero"><Sparkles/><h1>Bom dia, {user}</h1><p>Family Hub V8: sincronização robusta com Study, SwimTrack e Google Calendar.</p><small>{data.tarefas.filter(x=>!x.ok).length} tarefas abertas · {proximos.length} próximos eventos · Última sync: {data.syncAt || 'ainda não sincronizado'}</small></section><div className="quick"><button onClick={()=>syncTudo(false)} disabled={busy}><Cloud/> Sincronizar tudo</button><button onClick={readCalendar} disabled={busy}><CalendarDays/> Ler Calendar</button><button onClick={()=>exportPDF(data)}><Download/> PDF</button><button onClick={()=>exportICS(data.eventos)}><Download/> ICS</button></div><Card title="Hoje e próximos dias" action="Ver calendário" onClick={()=>setTab('calendario')}>{proximos.slice(0,6).map(e=><Event key={e.id} e={e}/>)}</Card><Card title="Tarefas pendentes" action="Ver todas" onClick={()=>setTab('tarefas')}>{data.tarefas.filter(x=>!x.ok).slice(0,5).map(t=><Item key={t.id} item={t}/>)}</Card><div className="stats"><Stat n={data.compras.filter(x=>!x.ok).length} t="Compras"/><Stat n={data.study.length} t="Study"/><Stat n={data.swim.length} t="SwimTrack"/></div></>}
 function Stat({n,t}){return <div className="stat"><b>{n}</b><span>{t}</span></div>}
 function Event({e,onDelete}){return <div className={`item origem-${slug(e.origem)}`}><span className="dot"></span><div><b>{e.titulo}</b><p>{e.data||'Sem data'} {e.hora && `· ${e.hora}`} · {e.membro||'Todos'} · {e.origem||'Família'} · {e.prioridade||'Normal'}</p>{e.notas&&<p>{e.notas}</p>}</div>{onDelete&&<button className="small" onClick={onDelete}><Trash2 size={16}/></button>}</div>}
 function Item({item,onDelete,onToggle}){return <div className="item"><button className={item.ok?'check on':'check'} onClick={onToggle}></button><div><b className={item.ok?'done':''}>{item.titulo||item.nome||item.destino}</b><p>{item.data||'Sem data'} · {item.membro||item.resp||'Todos'} {item.notas?`· ${item.notas}`:''}</p></div>{onDelete&&<button className="small" onClick={onDelete}><Trash2 size={16}/></button>}</div>}
@@ -152,7 +209,7 @@ function SearchResults({items}){return <Card title="Resultados da pesquisa">{ite
 function Toolbar({title}){return <div className="toolbar"><h1>{title}</h1></div>}
 function slug(s='familia'){return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-')}
 function exportICS(events){ const dt=s=>(s||todayISO()).replaceAll('-',''); const body=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Familia Rolim Pedro//PT'].concat(events.map(e=>['BEGIN:VEVENT',`UID:${e.id}@familia-rp`,`DTSTAMP:${dt(todayISO())}T090000Z`,`DTSTART;VALUE=DATE:${dt(e.data)}`,`SUMMARY:${e.titulo}`,`DESCRIPTION:${e.origem||''} ${e.membro||''} ${e.notas||''}`,'END:VEVENT']).flat(),['END:VCALENDAR']).join('\n'); download('familia-rolim-pedro.ics',body,'text/calendar') }
-function exportPDF(data){ const doc=new jsPDF(); doc.setFontSize(18); doc.text('Família Rolim Pedro - Hub V7',14,18); doc.setFontSize(11); let y=32; Object.entries(data).forEach(([k,v])=>{ if(!Array.isArray(v))return; doc.text(`${labelOf(k)}: ${v.length}`,14,y); y+=8; v.slice(0,8).forEach(x=>{doc.text(`- ${x.titulo||x.nome||x.destino||''} ${x.data||''}`,18,y); y+=6; if(y>280){doc.addPage(); y=18}})}); doc.save('familia-rolim-pedro.pdf') }
+function exportPDF(data){ const doc=new jsPDF(); doc.setFontSize(18); doc.text('Família Rolim Pedro - Hub V8',14,18); doc.setFontSize(11); let y=32; Object.entries(data).forEach(([k,v])=>{ if(!Array.isArray(v))return; doc.text(`${labelOf(k)}: ${v.length}`,14,y); y+=8; v.slice(0,8).forEach(x=>{doc.text(`- ${x.titulo||x.nome||x.destino||''} ${x.data||''}`,18,y); y+=6; if(y>280){doc.addPage(); y=18}})}); doc.save('familia-rolim-pedro.pdf') }
 function download(name,text,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); URL.revokeObjectURL(a.href) }
 
 createRoot(document.getElementById('root')).render(<App />)
