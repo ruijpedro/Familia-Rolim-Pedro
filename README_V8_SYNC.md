@@ -1,21 +1,7 @@
-# Família Rolim Pedro V8 — sincronização robusta
+# Família Rolim Pedro V8 — ligada ao RJP Hub Core V4
+A Família é o painel central. O backend é o RJP Hub Core V4.
 
-Esta versão corrige o erro `Failed to fetch`.
+URL Hub pré-configurado: `https://script.google.com/macros/s/AKfycbwEwGvvI3npMqg3V17rALVdGKbe9sRguaGM1_gYSS2ifRb5epYdbipq-4zPSZufVKsK/exec`
 
-## O que mudou
-- APK Android: usa `CapacitorHttp` (HTTP nativo), evitando CORS do WebView.
-- WebApp/GitHub Pages: usa JSONP no Apps Script, evitando CORS do browser.
-- `syncEvents` envia eventos em lotes pequenos na WebApp para não exceder limites de URL.
-- Mantém o URL do Hub configurável no separador **Sync**.
-
-## OBRIGATÓRIO — atualizar o Apps Script
-1. Abrir o projeto RJP Hub no Google Apps Script.
-2. Substituir o `Code.gs` pelo ficheiro `google-apps-script/Code.gs` desta V8.
-3. Guardar.
-4. Implementar > Gerir implementações > Editar > **Nova versão** > Implementar.
-5. Se o URL `/exec` mudar, colar o novo URL em **Família > Sync**.
-
-## Teste
-- Abrir `/exec?action=ping` no browser.
-- Na Família: **Sync > Testar sincronização**.
-- Depois: **Calendário > Ler Google**.
+Fluxo: Família V8 → Hub V4 → Calendar/Sheets/Drive; Study V3 → Hub V4 → Família/Calendar.
+A APK usa HTTP nativo; a WebApp usa JSONP. Isto elimina o principal motivo do `Failed to fetch`.

@@ -1,6 +1,6 @@
 {
   "name": "familia-rolim-pedro",
-  "version": "8.0.0",
+  "version": "8.0.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,16 +9,16 @@
     "sync": "npx cap sync android"
   },
   "dependencies": {
-    "@capacitor/android": "^6.2.0",
-    "@capacitor/core": "^6.2.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.21",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "lucide-react": "^0.468.0",
-    "jspdf": "^2.5.2"
+    "@capacitor/android": "6.2.0",
+    "@capacitor/core": "6.2.0",
+    "@vitejs/plugin-react": "4.3.1",
+    "vite": "5.4.21",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "lucide-react": "0.468.0",
+    "jspdf": "2.5.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.2.0"
+    "@capacitor/cli": "6.2.0"
   }
 }

@@ -26,7 +26,7 @@ const sections = [
 ]
 
 function migrate(){
-  const keys = [STORAGE,'frp_v23','frp_v22','familia_rolim_pedro']
+  const keys = [STORAGE,'frp_v70','frp_v30','frp_v23','frp_v22','familia_rolim_pedro']
   for(const k of keys){
     try{ const raw = localStorage.getItem(k); if(raw) return {...initial, ...JSON.parse(raw)} }catch{}
   }
@@ -82,19 +82,19 @@ async function api(action, payload={}){
 
   // GitHub Pages/WebApp: JSONP evita o bloqueio CORS do Google Apps Script.
   // Para não ultrapassar limites de URL, os eventos são enviados em pequenos lotes.
-  if(action === 'syncEvents'){
+  if(action === 'syncEvents' || action === 'calendar.sync'){
     const events = payload.events || []
     let count = 0
     for(let i=0;i<events.length;i+=8){
-      const r = await apiWeb('syncEvents',{events:events.slice(i,i+8)})
+      const r = await apiWeb('calendar.sync',{events:events.slice(i,i+8)})
       count += Number(r.count || 0)
     }
     return {ok:true,count}
   }
-  if(action === 'syncHub'){
-    if((payload.events||[]).length) await api('syncEvents',{events:payload.events})
+  if(action === 'syncHub' || action === 'syncAll'){
+    if((payload.events||[]).length) await api('calendar.sync',{events:payload.events})
     // O Hub importa Study/Swim e devolve o Calendar. Tarefas/compras continuam offline nesta fase.
-    return apiWeb('syncHub',{})
+    return apiWeb('syncAll',{})
   }
   return apiWeb(action,payload)
 }
@@ -132,7 +132,7 @@ function App(){
     setBusy(true)
     try{
       const payload = { events:data.eventos, tasks:data.tarefas, compras:data.compras }
-      const r = await api('syncHub', payload)
+      const r = await api('syncAll', payload)
       const study = r.study || []
       const swim = r.swim || []
       const calendarEvents = r.events || []
@@ -142,10 +142,10 @@ function App(){
     }catch(e){ if(!silent) flash(e.message) }
     finally{ setBusy(false) }
   }
-  const syncCalendar = async () => { setBusy(true); try{ await api('syncEvents',{events:data.eventos}); persist({...data,syncAt:new Date().toLocaleString('pt-PT')}); flash('Calendário familiar sincronizado') } catch(e){ flash(e.message) } finally{ setBusy(false) } }
-  const readCalendar = async () => { setBusy(true); try{ const r=await api('listEvents'); persist({...data,eventos:uniqueById([...(r.events||[]),...data.eventos]),syncAt:new Date().toLocaleString('pt-PT')}); flash('Google Calendar lido') } catch(e){ flash(e.message) } finally{ setBusy(false) } }
-  const importStudy = async () => { setBusy(true); try{ const r=await api('importStudy'); const study=r.items||[]; persist({...data,study:uniqueById([...study,...data.study]),eventos:uniqueById([...study.map(x=>toEvent(x,'RJP Study')),...data.eventos])}); flash(`${study.length} itens importados da Study`) } catch(e){ flash(e.message) } finally{ setBusy(false) } }
-  const importSwim = async () => { setBusy(true); try{ const r=await api('importSwim'); const swim=r.items||[]; persist({...data,swim:uniqueById([...swim,...data.swim]),eventos:uniqueById([...swim.map(x=>toEvent(x,'SwimTrack')),...data.eventos])}); flash(`${swim.length} itens importados do SwimTrack`) } catch(e){ flash(e.message) } finally{ setBusy(false) } }
+  const syncCalendar = async () => { setBusy(true); try{ await api('calendar.sync',{events:data.eventos}); persist({...data,syncAt:new Date().toLocaleString('pt-PT')}); flash('Calendário familiar sincronizado') } catch(e){ flash(e.message) } finally{ setBusy(false) } }
+  const readCalendar = async () => { setBusy(true); try{ const r=await api('calendar.list'); persist({...data,eventos:uniqueById([...(r.events||[]),...data.eventos]),syncAt:new Date().toLocaleString('pt-PT')}); flash('Google Calendar lido') } catch(e){ flash(e.message) } finally{ setBusy(false) } }
+  const importStudy = async () => { setBusy(true); try{ const r=await api('study.import'); const study=r.items||[]; persist({...data,study:uniqueById([...study,...data.study]),eventos:uniqueById([...study.map(x=>toEvent(x,'RJP Study')),...data.eventos])}); flash(`${study.length} itens importados da Study`) } catch(e){ flash(e.message) } finally{ setBusy(false) } }
+  const importSwim = async () => { setBusy(true); try{ const r=await api('swim.import'); const swim=r.items||[]; persist({...data,swim:uniqueById([...swim,...data.swim]),eventos:uniqueById([...swim.map(x=>toEvent(x,'SwimTrack')),...data.eventos])}); flash(`${swim.length} itens importados do SwimTrack`) } catch(e){ flash(e.message) } finally{ setBusy(false) } }
 
   const filtered = useMemo(()=>{ const text=q.trim().toLowerCase(); if(!text) return null; return Object.entries(data).flatMap(([kind,arr])=>Array.isArray(arr)?arr.filter(x=>JSON.stringify(x).toLowerCase().includes(text)).map(x=>({...x,kind})):[]) },[q,data])
   const proximos = useMemo(()=>data.eventos.filter(e=>e.data>=todayISO()).sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora)),[data.eventos])
